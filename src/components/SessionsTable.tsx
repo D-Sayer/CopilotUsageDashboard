@@ -26,7 +26,7 @@ export function SessionsTable({ sessions }: Props) {
               <th>Output Tokens</th>
               <th>Duration</th>
               <th>Code Changes</th>
-              <th>API Price Equiv.</th>
+              <th>API Price Equiv. (USD)</th>
             </tr>
           </thead>
           <tbody>

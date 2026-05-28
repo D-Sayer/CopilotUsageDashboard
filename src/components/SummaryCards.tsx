@@ -43,8 +43,8 @@ export function SummaryCards({ summary, models, dailyByModel }: Props) {
     { label: "Total Requests", value: formatNumber(summary.totalRequests), icon: <RefreshCw size={20} /> },
     { label: "Total Tokens", value: formatTokens(summary.totalTokens), icon: <Coins size={20} /> },
     { label: "Premium Requests", value: formatNumber(summary.totalPremiumRequests), icon: <Star size={20} /> },
-    { label: "API Price (All Time)", value: hasUnknownModels ? `~${formatCost(totalApiCost)}` : formatCost(totalApiCost), icon: <DollarSign size={20} /> },
-    { label: "API Price (30 Days)", value: rolling30HasUnknown ? `~${formatCost(rolling30Cost)}` : formatCost(rolling30Cost), icon: <TrendingUp size={20} /> },
+    { label: "API Price USD (All Time)", value: hasUnknownModels ? `~${formatCost(totalApiCost)}` : formatCost(totalApiCost), icon: <DollarSign size={20} /> },
+    { label: "API Price USD (30 Days)", value: rolling30HasUnknown ? `~${formatCost(rolling30Cost)}` : formatCost(rolling30Cost), icon: <TrendingUp size={20} /> },
   ];
 
   return (

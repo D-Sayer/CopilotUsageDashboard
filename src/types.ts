@@ -5,6 +5,28 @@ export interface UsageSummary {
   totalPremiumRequests: number;
   firstSession: string;
   lastSession: string;
+  shareHighlights: ShareHighlights;
+}
+
+export interface ShareHighlights {
+  mostUsedModel: {
+    model: string;
+    sessions: number;
+    requests: number;
+  } | null;
+  deepestThread: {
+    turns: number;
+    selectedModel: string;
+  } | null;
+  longestSession: {
+    durationMs: number;
+    selectedModel: string;
+  } | null;
+  peakDay: {
+    date: string;
+    tokens: number;
+    requests: number;
+  } | null;
 }
 
 export interface DailyUsage {

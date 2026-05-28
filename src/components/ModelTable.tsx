@@ -38,7 +38,7 @@ export function ModelTable({ models }: Props) {
               <th>Cache Read</th>
               <th>Reasoning</th>
               <th>Premium Cost</th>
-              <th>API Price Equiv.</th>
+              <th>API Price Equiv. (USD)</th>
             </tr>
           </thead>
           <tbody>

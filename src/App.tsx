@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle } from "lucide-react";
 import { useUsageData } from "./hooks/useUsageData";
 import { SummaryCards } from "./components/SummaryCards";
@@ -7,10 +7,16 @@ import { DailyRequestsChart } from "./components/DailyRequestsChart";
 import { ModelTable } from "./components/ModelTable";
 import { SessionsTable } from "./components/SessionsTable";
 import { SyncButton } from "./components/SyncButton";
+import { ShareButton } from "./components/ShareButton";
+import { ShareCardModal } from "./components/ShareCardModal";
+import { buildShareCardData } from "./share";
 import "./App.css";
 
 function App() {
   const { data, loading, error, lastSynced, fetchData } = useUsageData();
+  const [shareOpen, setShareOpen] = useState(false);
+
+  const shareCardData = useMemo(() => (data ? buildShareCardData(data) : null), [data]);
 
   useEffect(() => {
     fetchData();
@@ -27,7 +33,10 @@ function App() {
               <p className="subtitle">Token consumption & session analytics</p>
             </div>
           </div>
-          <SyncButton onSync={fetchData} loading={loading} lastSynced={lastSynced} />
+          <div className="header-actions">
+            {shareCardData && <ShareButton onClick={() => setShareOpen(true)} />}
+            <SyncButton onSync={fetchData} loading={loading} lastSynced={lastSynced} />
+          </div>
         </div>
       </header>
 
@@ -64,6 +73,10 @@ function App() {
           </div>
         )}
       </main>
+
+      {shareCardData && shareOpen && (
+        <ShareCardModal onClose={() => setShareOpen(false)} data={shareCardData} />
+      )}
     </div>
   );
 }

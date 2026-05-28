@@ -88,6 +88,22 @@ function extractSessionData(sessionDir) {
   };
 }
 
+function pickTopModel(modelTotals) {
+  const entries = Object.values(modelTotals);
+  if (entries.length === 0) return null;
+
+  return entries.reduce((best, current) => {
+    if (!best) return current;
+    if (current.sessions !== best.sessions) {
+      return current.sessions > best.sessions ? current : best;
+    }
+    if (current.requests !== best.requests) {
+      return current.requests > best.requests ? current : best;
+    }
+    return current.inputTokens + current.outputTokens > best.inputTokens + best.outputTokens ? current : best;
+  }, null);
+}
+
 app.get("/api/usage", (req, res) => {
   try {
     if (!fs.existsSync(SESSION_STATE_DIR)) {
@@ -181,6 +197,21 @@ app.get("/api/usage", (req, res) => {
 
     const totalSessions = sessions.length;
     const totalRequests = Object.values(modelTotals).reduce((s, m) => s + m.requests, 0);
+    const mostUsedModel = pickTopModel(modelTotals);
+    const deepestThread = sessions.reduce((best, session) => {
+      if (!best || session.turnCount > best.turnCount) return session;
+      return best;
+    }, null);
+    const longestSession = sessions.reduce((best, session) => {
+      if (!best || session.totalApiDurationMs > best.totalApiDurationMs) return session;
+      return best;
+    }, null);
+    const peakDay = sortedDaily.reduce((best, day) => {
+      const dayTokens = day.inputTokens + day.outputTokens;
+      if (!best) return { ...day, tokens: dayTokens };
+      if (dayTokens !== best.tokens) return dayTokens > best.tokens ? { ...day, tokens: dayTokens } : best;
+      return day.requests > best.requests ? { ...day, tokens: dayTokens } : best;
+    }, null);
 
     res.json({
       summary: {
@@ -190,6 +221,34 @@ app.get("/api/usage", (req, res) => {
         totalPremiumRequests: sessions.reduce((s, sess) => s + sess.totalPremiumRequests, 0),
         firstSession: sortedDaily[0]?.date,
         lastSession: sortedDaily[sortedDaily.length - 1]?.date,
+        shareHighlights: {
+          mostUsedModel: mostUsedModel
+            ? {
+                model: mostUsedModel.model,
+                sessions: mostUsedModel.sessions,
+                requests: mostUsedModel.requests,
+              }
+            : null,
+          deepestThread: deepestThread
+            ? {
+                turns: deepestThread.turnCount,
+                selectedModel: deepestThread.selectedModel,
+              }
+            : null,
+          longestSession: longestSession
+            ? {
+                durationMs: longestSession.totalApiDurationMs,
+                selectedModel: longestSession.selectedModel,
+              }
+            : null,
+          peakDay: peakDay
+            ? {
+                date: peakDay.date,
+                tokens: peakDay.tokens,
+                requests: peakDay.requests,
+              }
+            : null,
+        },
       },
       dailyUsage: sortedDaily,
       dailyByModel,

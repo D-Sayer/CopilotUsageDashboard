@@ -150,7 +150,7 @@ export function calculateModelCost(
 
 export function formatCost(cost: number, isUnknown?: boolean): string {
   if (isUnknown) return "—";
-  if (cost < 0.01) return `$${cost.toFixed(4)}`;
-  if (cost < 1) return `$${cost.toFixed(3)}`;
-  return `$${cost.toFixed(2)}`;
+  if (cost < 0.01) return `$${cost.toFixed(4)} USD`;
+  if (cost < 1) return `$${cost.toFixed(3)} USD`;
+  return `$${cost.toFixed(2)} USD`;
 }
