@@ -119,8 +119,10 @@ export function calculateTokenCost(
   cacheWriteTokens: number,
   reasoningTokens: number,
 ): number {
+  const actualInputTokens = inputTokens - cacheReadTokens;
+
   return (
-    (inputTokens / 1_000_000) * pricing.inputPerMillion +
+    (actualInputTokens / 1_000_000) * pricing.inputPerMillion +
     (outputTokens / 1_000_000) * pricing.outputPerMillion +
     (cacheReadTokens / 1_000_000) * pricing.cacheReadPerMillion +
     (cacheWriteTokens / 1_000_000) * pricing.cacheWritePerMillion +
