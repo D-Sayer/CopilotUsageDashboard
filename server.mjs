@@ -11,6 +11,78 @@ app.use(cors());
 const COPILOT_DIR = path.join(process.env.USERPROFILE || "", ".copilot");
 const SESSION_STATE_DIR = path.join(COPILOT_DIR, "session-state");
 
+function asNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function asObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+}
+
+function getEventData(event) {
+  return asObject(event?.data) || asObject(event) || {};
+}
+
+function findLastEvent(events, type) {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    if (events[i]?.type === type) return events[i];
+  }
+  return null;
+}
+
+function normalizeModelMetrics(rawMetrics) {
+  const metrics = asObject(rawMetrics);
+  if (!metrics) return {};
+
+  return Object.fromEntries(
+    Object.entries(metrics)
+      .filter(([, metric]) => asObject(metric))
+      .map(([model, metric]) => {
+        const requests = asObject(metric.requests) || {};
+        const usage = asObject(metric.usage) || {};
+
+        return [
+          model,
+          {
+            requests: {
+              count: asNumber(requests.count),
+              cost: asNumber(requests.cost),
+            },
+            usage: {
+              inputTokens: asNumber(usage.inputTokens),
+              outputTokens: asNumber(usage.outputTokens),
+              cacheReadTokens: asNumber(usage.cacheReadTokens),
+              cacheWriteTokens: asNumber(usage.cacheWriteTokens),
+              reasoningTokens: asNumber(usage.reasoningTokens),
+            },
+          },
+        ];
+      }),
+  );
+}
+
+function normalizeCodeChanges(rawCodeChanges) {
+  const codeChanges = asObject(rawCodeChanges);
+  if (!codeChanges) return null;
+
+  return {
+    linesAdded: asNumber(codeChanges.linesAdded),
+    linesRemoved: asNumber(codeChanges.linesRemoved),
+    filesModified: Array.isArray(codeChanges.filesModified)
+      ? codeChanges.filesModified.filter((file) => typeof file === "string")
+      : [],
+  };
+}
+
+function getSessionDateKey(startTime) {
+  if (!startTime) return "unknown";
+
+  const timestamp = new Date(typeof startTime === "number" ? startTime : startTime);
+  if (Number.isNaN(timestamp.getTime())) return "unknown";
+
+  return timestamp.toISOString().split("T")[0];
+}
+
 function parseEventsFile(filePath) {
   try {
     const content = fs.readFileSync(filePath, "utf-8");
@@ -36,13 +108,16 @@ function extractSessionData(sessionDir) {
   const events = parseEventsFile(eventsPath);
 
   const startEvent = events.find((e) => e.type === "session.start");
-  const shutdownEvent = events.find((e) => e.type === "session.shutdown");
+  const shutdownEvent = findLastEvent(events, "session.shutdown");
 
   if (!startEvent && !shutdownEvent) return null;
 
+  const startData = getEventData(startEvent);
+  const shutdownData = getEventData(shutdownEvent);
+
   const sessionId = path.basename(sessionDir);
-  const startTime = startEvent?.data?.startTime || shutdownEvent?.data?.sessionStartTime;
-  const selectedModel = startEvent?.data?.selectedModel || shutdownEvent?.data?.currentModel;
+  const startTime = startData.startTime || shutdownData.sessionStartTime || startEvent?.timestamp || shutdownEvent?.timestamp || null;
+  const selectedModel = startData.selectedModel || shutdownData.currentModel || shutdownData.selectedModel || null;
 
   // Extract workspace info
   const workspacePath = path.join(sessionDir, "workspace.yaml");
@@ -60,10 +135,10 @@ function extractSessionData(sessionDir) {
   }
 
   // Extract model metrics from shutdown event
-  const modelMetrics = shutdownEvent?.data?.modelMetrics || {};
-  const totalPremiumRequests = shutdownEvent?.data?.totalPremiumRequests || 0;
-  const totalApiDurationMs = shutdownEvent?.data?.totalApiDurationMs || 0;
-  const codeChanges = shutdownEvent?.data?.codeChanges || null;
+  const modelMetrics = normalizeModelMetrics(shutdownData.modelMetrics);
+  const totalPremiumRequests = asNumber(shutdownData.totalPremiumRequests);
+  const totalApiDurationMs = asNumber(shutdownData.totalApiDurationMs);
+  const codeChanges = normalizeCodeChanges(shutdownData.codeChanges);
 
   // Also extract per-turn model info for more granularity
   const turnModels = events
@@ -128,9 +203,7 @@ app.get("/api/usage", (req, res) => {
     const modelTotals = {};
 
     for (const session of sessions) {
-      const date = session.startTime
-        ? new Date(typeof session.startTime === "number" ? session.startTime : session.startTime).toISOString().split("T")[0]
-        : "unknown";
+      const date = getSessionDateKey(session.startTime);
 
       if (!dailyUsage[date]) {
         dailyUsage[date] = { date, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, reasoningTokens: 0, requests: 0, premiumRequests: 0, sessions: 0 };
@@ -169,9 +242,7 @@ app.get("/api/usage", (req, res) => {
     // Build per-day per-model breakdown
     const dailyByModel = {};
     for (const session of sessions) {
-      const date = session.startTime
-        ? new Date(typeof session.startTime === "number" ? session.startTime : session.startTime).toISOString().split("T")[0]
-        : "unknown";
+      const date = getSessionDateKey(session.startTime);
 
       if (!dailyByModel[date]) dailyByModel[date] = {};
 

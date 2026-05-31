@@ -40,6 +40,16 @@ const pricingTable: Array<{ pattern: string; pricing: ModelPricing }> = [
       reasoningPerMillion: 15,
     },
   },
+  {
+    pattern: "gpt-5.3-codex",
+    pricing: {
+      inputPerMillion: 1.75,
+      outputPerMillion: 14,
+      cacheReadPerMillion: 0.175,
+      cacheWritePerMillion: 0,
+      reasoningPerMillion: 14,
+    },
+  },
 
   // ANTHROPIC
   {
